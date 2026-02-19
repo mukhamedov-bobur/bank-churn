@@ -1,0 +1,5 @@
+{
+  "threshold": 0.19616271673678573,
+  "min_precision": 0.45,
+  "objective": "maximize_recall_given_precision_constraint"
+}

@@ -1,0 +1,232 @@
+<<<<<<< HEAD
+# bank-churn
+Customer churn prediction is a critical business problem in banking. The objective is to predict whether a client will leave the bank (ушел_из_банка) using historical customer data.  This project builds a production-ready ML system.
+=======
+Stable SHAP-Based Feature Selection + Production ML Service
+
+Problem Description
+Customer churn prediction is a critical business problem in banking.
+The objective is to predict whether a client will leave the bank (ушел_из_банка) using historical customer data.
+
+This project builds a production-ready ML system that:
+- Performs robust cross-validation
+- Selects stable important features using SHAP
+- Optimizes classification threshold for recall-focused objectives
+- Trains a final production model
+- Exposes the model through a REST API
+- Fully Dockerized for deployment
+
+The final result is a reproducible and deployable ML microservice.
+
+The Jupyter Notebook scripts are stored under /jupyter_notebook folder. The training pipeline consists of the following steps:
+
+1) Data Loading & Preprocessing
+- Cast categorical features to string (required by CatBoost)
+- Define target variable
+
+2) Stratified K-Fold Cross Validation
+We use:
+- 10-fold Stratified CV
+- Out-of-fold probability predictions
+This ensures:
+- Robust model evaluation
+- Reduced overfitting risk
+- Stable feature importance estimation
+
+3) SHAP-Based Feature Selection
+We use:
+SHAP
+TreeExplainer on training folds only
+For each fold:
+Train base model on all features
+Compute mean absolute SHAP values
+Select features covering 95% cumulative importance
+Retrain reduced model
+
+This prevents: Information leakage, Feature instability, Overfitting from noisy variables
+
+4) Stable Feature Methodology
+Feature selection is done per fold.
+We then:
+Count how many times each feature appears
+Keep features appearing in at least 3 folds
+This produces a stable feature subset.
+
+Why this matters:
+Reduces variance in feature selection
+Avoids single-fold artifacts
+Improves generalization
+Mimics real-world ML robustness practices
+
+
+5) Threshold Optimization
+
+Instead of using default 0.5 probability threshold:
+We optimize threshold using Precision-Recall curve
+Constrain minimum precision (e.g. ≥ 0.30)
+Maximize recall under that constraint
+This aligns the model with business objectives.
+
+6) Final Production Model
+
+After stable feature selection: Train final model on full dataset
+
+Save artifacts:
+model.cbm
+stable_features.json
+threshold.json
+categorical_features.json
+feature_importance.json
+
+The API uses only these artifacts.
+
+7) REST API
+
+Built with FastAPI.
+
+Available Endpoints
+GET /Health check
+
+POST /predict
+Returns: Probability, Binary prediction, Optimized threshold
+
+GET /model-info
+
+Returns: Required input features, Categorical features, Threshold, Feature importance
+
+POST /explain
+
+Returns SHAP explanation for a single prediction.
+
+8) Project Structure
+bank-churn-ml-api/
+│
+├── app/
+│   ├── main.py
+│   ├── schemas.py
+│   ├── predictor.py
+│   ├── model_info.py
+│   └── explain.py
+│
+├── ml/
+│   └── train.py
+│
+├── artifacts/
+│
+├── Dockerfile
+├── requirements.txt
+└── README.md
+
+9) How to Train the Model
+
+Make sure your dataset TZ.csv is in the root directory.
+
+Run:
+
+python -m ml.train
+
+This will:
+- Perform CV
+- Select stable features
+- Optimize threshold
+- Train final model
+- Save artifacts to /artifacts
+
+Make predictions for the new data (json format) which is stored /data/ :
+
+python -m scripts.predict_json data/new_data_for_python_run.json
+
+This will:
+- Selects important (stable) features for the new dataset
+- Makes ML predictions
+- Output is:
+Row 1: {'prediction': 0, 'probability': 0.02700852076232483}
+Row 2: {'prediction': 0, 'probability': 0.015724676509536545}
+Row 3: {'prediction': 1, 'probability': 0.9918583410294448}
+Row 4: {'prediction': 0, 'probability': 0.00962896434687992}
+Row 5: {'prediction': 0, 'probability': 0.006510965846547162}
+Row 6: {'prediction': 1, 'probability': 0.12474037960333532}
+Row 7: {'prediction': 0, 'probability': 0.0017267812356375272}
+Row 8: {'prediction': 0, 'probability': 0.024754396886093905}
+Row 9: {'prediction': 0, 'probability': 0.03336389200649954}
+Row 10: {'prediction': 1, 'probability': 0.0654287735972349}
+Row 11: {'prediction': 0, 'probability': 0.045600812317386455}
+
+
+10) How to Run API (Local)
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+Run:
+
+uvicorn app.main:app --reload
+
+Make predictions for the new data:
+
+curl -X POST "http://localhost:8000/predict-batch" -H "Content-Type: application/json" --data-binary @data/new_data_for_curl_run.json
+
+This will make batch-predictions for the new data stored in /data
+
+OUTPUT:
+{"predictions":[{"prediction":0,"probability":0.02700852076232483},{"prediction":0,"probability":0.015724676509536545},{"prediction":1,"probability":0.9918583410294448},{"prediction":0,"probability":0.00962896434687992},{"prediction":0,"probability":0.006510965846547162} .......
+
+
+
+11) Docker Instructions
+
+This project is fully containerized using Docker.
+
+Build Docker Image
+docker build -t churn-api .
+
+Run Container
+docker run -p 8000:8000 churn-api
+
+
+Open:
+
+http://localhost:8000/docs
+
+Example API Request
+Request
+curl -X POST "http://localhost:8000/predict" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "features": {
+         "кредитный_рейтинг": "650",
+         "город": "Алматы",
+         "пол": "М",
+         "активный_клиент": "1",
+         "есть_кредитка": "1",
+         "баланс": 120000,
+         "возраст": 32
+       }
+     }'
+
+Example Response
+{
+  "probability": 0.7421,
+  "prediction": 1,
+  "threshold": 0.37
+}
+
+ Example Explanation Request
+curl -X POST "http://localhost:8000/explain" \
+     -H "Content-Type: application/json" \
+     -d '{ "features": { ... } }'
+
+
+Returns:
+
+{
+  "base_value": 0.41,
+  "feature_contributions": {
+    "баланс": 0.18,
+    "возраст": 0.09,
+    ...
+  }
+}
+
+>>>>>>> 7f30d97 (Initial commit)
