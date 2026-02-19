@@ -3,6 +3,7 @@ uvicorn
 pandas
 numpy
 catboost
+xgboost
 scikit-learn
 shap
 
